@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const response = await fetch('backend_acciones.php', {
+                const response = await fetch('app/controllers/backend_acciones.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -270,39 +270,36 @@ function checkout() {
     }
 
     const userDisplay = document.getElementById('user-display');
-    const clientEmail = userDisplay && userDisplay.textContent ? userDisplay.textContent : 'cliente@gamestore.es';
+    const clientEmail = userDisplay && userDisplay.textContent ? userDisplay.textContent : '';
 
     const checkoutData = {
         action: 'checkout',
         client_email: clientEmail,
-        items: cart
+        items: cart.map(({ id, title, price, qty }) => ({ id, title, price, qty }))
     };
 
-    fetch('backend_acciones.php', {
+    fetch('app/controllers/backend_acciones.php', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(checkoutData)
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert('¡Compra realizada con éxito! Tu pedido ha sido registrado y el stock actualizado.');
-            cart = [];
-            updateCartUI();
-            closeCart();
-            setTimeout(() => { location.reload(); }, 1000);
-        } else {
-            alert('Error al procesar la compra: ' + (data.message || 'Inténtalo de nuevo.'));
+    .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'Inténtalo de nuevo.');
         }
+        return data;
     })
-    .catch(err => {
-        console.error('Error de red:', err);
-        alert('¡Compra realizada con éxito!');
+    .then((data) => {
+        alert('¡Compra realizada con éxito! Pedido #' + data.venta_id);
         cart = [];
         updateCartUI();
         closeCart();
+        location.reload();
+    })
+    .catch((err) => {
+        console.error('Error en la compra:', err);
+        alert('Error al procesar la compra: ' + err.message);
     });
 }
 
@@ -377,7 +374,7 @@ function executeDelete() {
     formData.append('action', 'delete');
     formData.append('id', deleteTargetId);
 
-    fetch('backend_acciones.php', {
+    fetch('app/controllers/backend_acciones.php', {
         method: 'POST',
         body: formData
     })
